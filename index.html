@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>XML2JSON Example</title>
+    <style type="text/css">
+        body {
+            margin: 0;
+            padding: 0;
+            width: 80%;
+            margin: 50px auto 100px;
+        }
+        #json-input {
+            display: block;
+            width: 100%;
+            height: 200px;
+        }
+        #translate {
+            display: block;
+            height: 28px;
+            margin: 20px 0;
+            border-radius: 3px;
+            border: 2px solid;
+            cursor: pointer;
+        }
+        #json-display {
+            border: 1px solid #000;
+            margin: 0;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="fileForUpload">
+    <br><br><br>
+    <pre id="json-display"></pre>
+
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="./dist/jquery.json-editor.min.js"></script>
+    <script type="text/javascript">
+        let editor;
+        initializeEditor();
+        prettifyJSON({});
+        
+        function initializeEditor(container = "#json-display", json = {}){
+            editor = new JsonEditor(container, json);
+        }
+
+        function prettifyJSON(json){
+            editor.load(json)
+        }
+
+        document.getElementById('fileForUpload').onchange = function() {
+            readFile();
+        };
+
+        // read selected file
+        function readFile(){
+            const file = document.getElementById("fileForUpload").files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.readAsText(file);
+                reader.onload = (e) => {
+                    let xml = e.target.result,
+                        parser = new DOMParser(),
+                        jsonObj;
+                        
+                    parser = parser.parseFromString(xml, "application/xml");
+                    jsonObj = xmlToJson(parser);
+
+                    prettifyJSON(jsonObj);
+                };
+                reader.onerror = (evt) => {
+                    console.log("error reading file");
+                };
+            }
+        }
+
+        /**
+         * function to convert XML to JSON
+        * @param {string} xml XML DOM tree
+        */
+        function xmlToJson(xml) {
+            // Create the return object
+            var obj = {};
+
+            if (xml.nodeType == 1) {
+                // element
+                // do attributes
+                if (xml.attributes.length > 0) {
+                obj = {};
+                for (var j = 0; j < xml.attributes.length; j++) {
+                    var attribute = xml.attributes.item(j);
+                    obj[attribute.nodeName] = attribute.nodeValue;
+                }
+                }
+            } else if (xml.nodeType == 3) {
+                // text
+                obj = xml.nodeValue;
+            }
+
+            // do children
+            // If all text nodes inside, get concatenated text from them.
+            var textNodes = [].slice.call(xml.childNodes).filter(function(node) {
+                return node.nodeType === 3;
+            });
+            if (xml.hasChildNodes() && xml.childNodes.length === textNodes.length) {
+                obj = [].slice.call(xml.childNodes).reduce(function(text, node) {
+                return text + node.nodeValue;
+                }, "");
+            } else if (xml.hasChildNodes()) {
+                for (var i = 0; i < xml.childNodes.length; i++) {
+                    var item = xml.childNodes.item(i);
+                    var nodeName = item.nodeName;
+                    if(nodeName != "#text"){
+                        if (typeof obj[nodeName] == "undefined") {
+                            obj[nodeName] = xmlToJson(item);
+                        } else {
+                            if (typeof obj[nodeName].push == "undefined") {
+                                
+                        console.log(nodeName);
+                                var old = obj[nodeName];
+                                obj[nodeName] = [];
+                                obj[nodeName].push(old);
+                            }
+                            obj[nodeName].push(xmlToJson(item));
+                        }
+                    }
+                    
+                }
+            }
+            return obj;
+        }
+    </script>
+</body>
+</html>
